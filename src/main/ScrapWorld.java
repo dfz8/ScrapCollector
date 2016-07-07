@@ -22,7 +22,10 @@ public class ScrapWorld {
 	public static int width;
 	public static int height;
 	public static final int MAX_STEPS = 125;
-	public static final int GENERATIONS = 2;
+	public static final int GENERATIONS = 5;
+	public static final int SLEEP_TIME = 100;
+	public static final double MUTATION_RATE = 0.01;
+	public static boolean displayOn = false;
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
 		//instantiate map + robots
@@ -34,7 +37,8 @@ public class ScrapWorld {
 		
 		Robot[] orderedRobots;
 		for(int gen = 0; gen < GENERATIONS; gen++){
-			orderedRobots = simulateRound(map, allRobots);
+			orderedRobots = simulateRound(map, allRobots, gen);
+			Thread.sleep(2000);
 			allRobots = createNewGeneration(orderedRobots);			
 		}
 		
@@ -42,24 +46,50 @@ public class ScrapWorld {
 	
 	private static Robot[] createNewGeneration(Robot[] oldGen){
 		Robot[] newGen = new Robot[oldGen.length];
-		//...
+		int splicePoint;
+		int[] genes1, genes2, newGenes1, newGenes2;
+		for(int i = 0; i < oldGen.length/2; i++){
+			genes1 = oldGen[2*i].getDNA().getGenes();
+			genes2 = oldGen[2*i+1].getDNA().getGenes();
+
+			newGenes1 = new int[genes1.length];
+			newGenes2 = new int[genes2.length];
+			
+			splicePoint = (int)(Math.random()*newGenes1.length);
+			int j = 0;
+			for(; j < splicePoint; j++){
+				newGenes1[j] = genes1[j];
+				newGenes2[j] = genes2[j];
+			}
+			for(; j < newGenes1.length; j++){
+				newGenes1[j] = genes2[j];
+				newGenes2[j] = genes1[j];
+			}
+			newGen[2*i] = new Robot(1,1, new DNA(newGenes1));
+			newGen[2*i+1] = new Robot(1,1, new DNA(newGenes2));
+		}
 		return newGen;
 	}
 
-	private static Robot[] simulateRound(OBJECTS[][] map, Robot[] allRobots) throws InterruptedException {
+	private static Robot[] simulateRound(OBJECTS[][] map, Robot[] allRobots, int generation) throws InterruptedException {
 		Robot curRobot = allRobots[0];
 		OBJECTS[][] curMap = copyMap(map);
 		
-		//print out path for first robot of each generation
-		print(curMap, curRobot);		
+		if(displayOn)
+			print(curMap, curRobot);		
 		int stepCount = 0;
 		while( curRobot.getEnergy() > 0 && stepCount < MAX_STEPS){
-			System.out.println("Step: " + stepCount + ", score: " + curRobot.getScore() + ", energy: " + curRobot.getEnergy());
 			curRobot.update(curMap);
-			print(curMap, curRobot);
+			if(displayOn){
+				System.out.println("Step: " + stepCount + ", score: " + curRobot.getScore() + ", energy: " + curRobot.getEnergy());
+				print(curMap, curRobot);
+				Thread.sleep(SLEEP_TIME);
+			}
 			stepCount++;
-			Thread.sleep(300);
 		}	
+		System.out.println("==============================================================");
+		System.out.println("Results for Generation: " + generation);
+		System.out.println("==============================================================");
 		System.out.println("Robot 1 scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
 		for(int i = 1; i < allRobots.length; i++){
 			curRobot = allRobots[i];
