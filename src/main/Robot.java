@@ -1,3 +1,5 @@
+package main;
+
 public class Robot {
 	private int energy;
 	private DNA dna;
