@@ -7,64 +7,92 @@ public class Robot implements Comparable<Robot> {
 	private int pos_y;
 	private int score;
 	private int distanceTraveled;
+	private int start_x;
+	private int start_y;
+	static final int OIL_WORTH = 100;
+	static final int SCRAP_WORTH = 1000;
+	
 
-	public Robot(int x, int y){
+	public Robot(int x, int y, int dnaLength){
 		this.energy = 100;
-		this.dna = new DNA();
+		this.dna = new DNA(dnaLength);
 		this.pos_x = x;
 		this.pos_y = y;
+		this.start_x = x;
+		this.start_y = y;
 		this.score = 0;
 		this.distanceTraveled = 0;
 	}
 
 	public Robot(int x, int y, DNA dna){
-		this(x, y);
+		this(x, y, 0);
 		this.dna = dna; 
 	}
 
 	public void update(ScrapWorld.OBJECTS[][] map){
 		//surroundings = stuff in { up, right, down, left, center } tile
-		int index = 256*map[pos_y+1][pos_x].value() +
-				 	 64*map[pos_y][pos_x+1].value() +
-					 16*map[pos_y-1][pos_x].value() +
-					  4*map[pos_y][pos_x-1].value() + 
-					    map[pos_y][pos_x].value();
+		
+		int index = 0;
+		if( ScrapWorld.DNA_METHOD == 1){
+			index = map.length*this.pos_y + this.pos_x;
+		} else if( ScrapWorld.DNA_METHOD == 2 ) {
+			index = 256*map[this.pos_y+1][this.pos_x].value() +
+				 	 64*map[this.pos_y][this.pos_x+1].value() +
+					 16*map[this.pos_y-1][this.pos_x].value() +
+					  4*map[this.pos_y][this.pos_x-1].value() + 
+					    map[this.pos_y][this.pos_x].value();
+		}
+		
+		
 		switch(dna.getAction(index)){ 
 			case UP:
-				if(map[pos_y+1][pos_x] != ScrapWorld.OBJECTS.WALL){
+				if(map[this.pos_y+1][this.pos_x] != ScrapWorld.OBJECTS.WALL){
 					this.pos_y++;
-					this.distanceTraveled++;
+					int dist = Math.abs(this.pos_x - this.start_x) 
+							 + Math.abs(this.pos_y - this.start_y);
+					if(dist > this.distanceTraveled)
+						this.distanceTraveled = dist;
 				}
 				break;
 			case RIGHT:
-				if(map[pos_y][pos_x+1] != ScrapWorld.OBJECTS.WALL){
+				if(map[this.pos_y][this.pos_x+1] != ScrapWorld.OBJECTS.WALL){
 					this.pos_x++;
-					this.distanceTraveled++;
+					int dist = Math.abs(this.pos_x - this.start_x) 
+							 + Math.abs(this.pos_y - this.start_y);
+					if(dist > this.distanceTraveled)
+						this.distanceTraveled = dist;
 				}
 				break;
 			case DOWN:
-				if(map[pos_y-1][pos_x] != ScrapWorld.OBJECTS.WALL){
+				if(map[this.pos_y-1][this.pos_x] != ScrapWorld.OBJECTS.WALL){
 					this.pos_y--;
-					this.distanceTraveled++;
+					int dist = Math.abs(this.pos_x - this.start_x) 
+							 + Math.abs(this.pos_y - this.start_y);
+					if(dist > this.distanceTraveled)
+						this.distanceTraveled = dist;
 				}		
 				break;		
 			case LEFT:
-				if(map[pos_y][pos_x-1] != ScrapWorld.OBJECTS.WALL){
+				if(map[this.pos_y][this.pos_x-1] != ScrapWorld.OBJECTS.WALL){
 					this.pos_x--;
-					this.distanceTraveled++;
+					int dist = Math.abs(this.pos_x - this.start_x) 
+							 + Math.abs(this.pos_y - this.start_y);
+					if(dist > this.distanceTraveled)
+						this.distanceTraveled = dist;
 				}	
 				break;			
 			case PICKUP:
-				if(map[pos_y][pos_x] == ScrapWorld.OBJECTS.OIL){
+				if(map[this.pos_y][this.pos_x] == ScrapWorld.OBJECTS.OIL){
 					this.energy += 10;
-					this.score += 20;
-					map[pos_y][pos_x] = ScrapWorld.OBJECTS.EMPTY;
-				} else if(map[pos_y][4] == ScrapWorld.OBJECTS.SCRAP) {
-					this.score += 100;
-					map[pos_y][pos_x] = ScrapWorld.OBJECTS.EMPTY;
+					this.score += OIL_WORTH;
+					map[this.pos_y][this.pos_x] = ScrapWorld.OBJECTS.EMPTY;
+				} else if(map[this.pos_y][this.pos_x] == ScrapWorld.OBJECTS.SCRAP) {
+					this.score += SCRAP_WORTH;
+					map[this.pos_y][this.pos_x] = ScrapWorld.OBJECTS.EMPTY;
 				}
 				break;
-			default: //case STAY: save energy
+			case STAY:
+			default:
 				this.energy++;
 		}
 		this.energy--;
@@ -83,9 +111,9 @@ public class Robot implements Comparable<Robot> {
 			return 1;
 		if(this.score < robot.score)
 			return -1;
-		if(this.distanceTraveled > robot.distanceTraveled)
+		if(this.getDistanceTraveled() > robot.getDistanceTraveled())
 			return 1;
-		if(this.distanceTraveled < robot.distanceTraveled)
+		if(this.getDistanceTraveled() < robot.getDistanceTraveled())
 			return -1;
 		return 0;
 	}

@@ -9,7 +9,7 @@ public class RobotTests {
 
 	@Test
 	public void testRobotConstructors() {
-		Robot rob = new Robot(0,10);
+		Robot rob = new Robot(0,10,0);
 		assertEquals(rob.getX(), 0);
 		assertEquals(rob.getY(), 10);
 		assertEquals(rob.getScore(), 0);

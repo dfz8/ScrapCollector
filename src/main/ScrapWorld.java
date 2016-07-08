@@ -1,7 +1,9 @@
 package main;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.StringTokenizer;
 
 public class ScrapWorld {
@@ -21,25 +23,35 @@ public class ScrapWorld {
 	
 	public static int width;
 	public static int height;
+	public static int DNA_METHOD = 2;
 	public static final int MAX_STEPS = 125;
-	public static final int GENERATIONS = 5;
+	public static final int GENERATIONS = 25;
 	public static final int SLEEP_TIME = 100;
 	public static final double MUTATION_RATE = 0.01;
+	public static final int ROBOTS_PER_GENERATION = 20; //must be even
 	public static boolean displayOn = false;
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
 		//instantiate map + robots
 		OBJECTS[][] map = readFile();
-		Robot[] allRobots = new Robot[10];
-		for(int i = 0; i < allRobots.length; i++){
-			allRobots[i] = new Robot(1,1);
+		Robot[] allRobots = new Robot[ROBOTS_PER_GENERATION];
+		if(DNA_METHOD == 1) {
+			for(int i = 0; i < allRobots.length; i++){
+				allRobots[i] = new Robot(1,1,map.length*map[0].length);
+			}			
+		} else if (DNA_METHOD == 2) {
+			for(int i = 0; i < allRobots.length; i++){
+				allRobots[i] = new Robot(1,1,1024);
+			}			
 		}
 		
 		Robot[] orderedRobots;
 		for(int gen = 0; gen < GENERATIONS; gen++){
 			orderedRobots = simulateRound(map, allRobots, gen);
 			Thread.sleep(2000);
-			allRobots = createNewGeneration(orderedRobots);			
+			allRobots = createNewGeneration(orderedRobots);	
+			if(gen == GENERATIONS - 2)
+				displayOn = true; //display last gen
 		}
 		
 	}
@@ -73,25 +85,13 @@ public class ScrapWorld {
 
 	private static Robot[] simulateRound(OBJECTS[][] map, Robot[] allRobots, int generation) throws InterruptedException {
 		Robot curRobot = allRobots[0];
-		OBJECTS[][] curMap = copyMap(map);
-		
-		if(displayOn)
-			print(curMap, curRobot);		
+		OBJECTS[][] curMap = copyMap(map);	
 		int stepCount = 0;
-		while( curRobot.getEnergy() > 0 && stepCount < MAX_STEPS){
-			curRobot.update(curMap);
-			if(displayOn){
-				System.out.println("Step: " + stepCount + ", score: " + curRobot.getScore() + ", energy: " + curRobot.getEnergy());
-				print(curMap, curRobot);
-				Thread.sleep(SLEEP_TIME);
-			}
-			stepCount++;
-		}	
+		
 		System.out.println("==============================================================");
 		System.out.println("Results for Generation: " + generation);
 		System.out.println("==============================================================");
-		System.out.println("Robot 1 scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
-		for(int i = 1; i < allRobots.length; i++){
+		for(int i = 0; i < allRobots.length - 1; i++){
 			curRobot = allRobots[i];
 			curMap = copyMap(map);
 			stepCount = 0;
@@ -101,6 +101,18 @@ public class ScrapWorld {
 			}
 			System.out.println("Robot " + (i+1) + " scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
 		}
+		curRobot = allRobots[allRobots.length-1];
+		curMap = copyMap(map);
+		stepCount = 0;
+		while( curRobot.getEnergy() > 0 && stepCount < MAX_STEPS){
+			if(displayOn){
+				print(curMap, curRobot);
+			}
+			curRobot.update(curMap);
+			stepCount++;
+		}
+		System.out.println("Robot " + allRobots.length + " scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
+		
 		
 		Arrays.sort(allRobots);
 		return allRobots;
