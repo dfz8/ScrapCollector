@@ -1,6 +1,7 @@
 package main;
 
 public class Robot implements Comparable<Robot> {
+	
 	private int energy;
 	private DNA dna;
 	private int pos_x;
@@ -13,9 +14,9 @@ public class Robot implements Comparable<Robot> {
 	static final int SCRAP_WORTH = 1000;
 	
 
-	public Robot(int x, int y, int dnaLength){
+	public Robot(int x, int y){
 		this.energy = 100;
-		this.dna = new DNA(dnaLength);
+		this.dna = new DNA();
 		this.pos_x = x;
 		this.pos_y = y;
 		this.start_x = x;
@@ -25,25 +26,27 @@ public class Robot implements Comparable<Robot> {
 	}
 
 	public Robot(int x, int y, DNA dna){
-		this(x, y, 0);
+		this(x, y);
 		this.dna = dna; 
 	}
 
-	public void update(ScrapWorld.OBJECTS[][] map){
-		//surroundings = stuff in { up, right, down, left, center } tile
-		
-		int index = 0;
-		if( ScrapWorld.DNA_METHOD == 1){
-			index = map.length*this.pos_y + this.pos_x;
-		} else if( ScrapWorld.DNA_METHOD == 2 ) {
-			index = 256*map[this.pos_y+1][this.pos_x].value() +
-				 	 64*map[this.pos_y][this.pos_x+1].value() +
-					 16*map[this.pos_y-1][this.pos_x].value() +
-					  4*map[this.pos_y][this.pos_x-1].value() + 
-					    map[this.pos_y][this.pos_x].value();
+	public void update(ScrapWorld.OBJECTS[][] map){		
+		//always pick up things in the current tile
+		if(map[this.pos_y][this.pos_x] == ScrapWorld.OBJECTS.OIL){
+			this.energy += 10;
+			this.score += OIL_WORTH;
+			map[this.pos_y][this.pos_x] = ScrapWorld.OBJECTS.EMPTY;
+		} else if(map[this.pos_y][this.pos_x] == ScrapWorld.OBJECTS.SCRAP) {
+			this.score += SCRAP_WORTH;
+			map[this.pos_y][this.pos_x] = ScrapWorld.OBJECTS.EMPTY;
 		}
 		
-		
+		//find the index of the current action
+		int index = 125*map[this.pos_y+1][this.pos_x].value() +
+				 	 25*map[this.pos_y][this.pos_x+1].value() +
+					  5*map[this.pos_y-1][this.pos_x].value() +
+					    map[this.pos_y][this.pos_x-1].value();		
+			
 		switch(dna.getAction(index)){ 
 			case UP:
 				if(map[this.pos_y+1][this.pos_x] != ScrapWorld.OBJECTS.WALL){
@@ -80,21 +83,13 @@ public class Robot implements Comparable<Robot> {
 					if(dist > this.distanceTraveled)
 						this.distanceTraveled = dist;
 				}	
-				break;			
-			case PICKUP:
-				if(map[this.pos_y][this.pos_x] == ScrapWorld.OBJECTS.OIL){
-					this.energy += 10;
-					this.score += OIL_WORTH;
-					map[this.pos_y][this.pos_x] = ScrapWorld.OBJECTS.EMPTY;
-				} else if(map[this.pos_y][this.pos_x] == ScrapWorld.OBJECTS.SCRAP) {
-					this.score += SCRAP_WORTH;
-					map[this.pos_y][this.pos_x] = ScrapWorld.OBJECTS.EMPTY;
-				}
 				break;
 			case STAY:
 			default:
 				this.energy++;
 		}
+		
+		//each update uses up energy
 		this.energy--;
 	}
 

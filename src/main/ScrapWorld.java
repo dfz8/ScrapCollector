@@ -2,12 +2,13 @@ package main;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 
 public class ScrapWorld {
-
 	public static enum OBJECTS {
 		WALL(0, "x"), SCRAP(1,"s"), OIL(2,"o"), EMPTY(3,".");
 		
@@ -23,64 +24,37 @@ public class ScrapWorld {
 	
 	public static int width;
 	public static int height;
-	public static int DNA_METHOD = 2;
 	public static final int MAX_STEPS = 125;
-	public static final int GENERATIONS = 25;
-	public static final int SLEEP_TIME = 100;
+	public static final int GENERATIONS = 100;
+	public static final int SLEEP_TIME = 200;
 	public static final double MUTATION_RATE = 0.01;
-	public static final int ROBOTS_PER_GENERATION = 20; //must be even
+	public static final int ROBOTS_PER_GENERATION = 40; //must be even
 	public static boolean displayOn = false;
+	public static PrintWriter out;
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
 		//instantiate map + robots
+		out = new PrintWriter(new FileWriter(new File("results")));
 		OBJECTS[][] map = readFile();
+		
+		//create first generation of robots
 		Robot[] allRobots = new Robot[ROBOTS_PER_GENERATION];
-		if(DNA_METHOD == 1) {
 			for(int i = 0; i < allRobots.length; i++){
-				allRobots[i] = new Robot(1,1,map.length*map[0].length);
-			}			
-		} else if (DNA_METHOD == 2) {
-			for(int i = 0; i < allRobots.length; i++){
-				allRobots[i] = new Robot(1,1,1024);
-			}			
+				allRobots[i] = new Robot(1,1);		
 		}
-		
 		Robot[] orderedRobots;
-		for(int gen = 0; gen < GENERATIONS; gen++){
-			orderedRobots = simulateRound(map, allRobots, gen);
-			Thread.sleep(2000);
-			allRobots = createNewGeneration(orderedRobots);	
-			if(gen == GENERATIONS - 2)
-				displayOn = true; //display last gen
-		}
 		
-	}
-	
-	private static Robot[] createNewGeneration(Robot[] oldGen){
-		Robot[] newGen = new Robot[oldGen.length];
-		int splicePoint;
-		int[] genes1, genes2, newGenes1, newGenes2;
-		for(int i = 0; i < oldGen.length/2; i++){
-			genes1 = oldGen[2*i].getDNA().getGenes();
-			genes2 = oldGen[2*i+1].getDNA().getGenes();
-
-			newGenes1 = new int[genes1.length];
-			newGenes2 = new int[genes2.length];
-			
-			splicePoint = (int)(Math.random()*newGenes1.length);
-			int j = 0;
-			for(; j < splicePoint; j++){
-				newGenes1[j] = genes1[j];
-				newGenes2[j] = genes2[j];
-			}
-			for(; j < newGenes1.length; j++){
-				newGenes1[j] = genes2[j];
-				newGenes2[j] = genes1[j];
-			}
-			newGen[2*i] = new Robot(1,1, new DNA(newGenes1));
-			newGen[2*i+1] = new Robot(1,1, new DNA(newGenes2));
+		//simulate multiple generations
+		int gen = 0;
+		for(; gen < GENERATIONS; gen++){
+			orderedRobots = simulateRound(map, allRobots, gen);
+			allRobots = createNewGeneration(orderedRobots);
 		}
-		return newGen;
+		allRobots = simulateRound(map, allRobots, gen);
+		out.close();		
+		
+		Arrays.sort(allRobots);
+		saveRobot(allRobots[allRobots.length-1]);
 	}
 
 	private static Robot[] simulateRound(OBJECTS[][] map, Robot[] allRobots, int generation) throws InterruptedException {
@@ -88,9 +62,9 @@ public class ScrapWorld {
 		OBJECTS[][] curMap = copyMap(map);	
 		int stepCount = 0;
 		
-		System.out.println("==============================================================");
-		System.out.println("Results for Generation: " + generation);
-		System.out.println("==============================================================");
+		out.println("==============================================================");
+		out.println("Results for Generation: " + generation);
+		out.println("==============================================================");
 		for(int i = 0; i < allRobots.length - 1; i++){
 			curRobot = allRobots[i];
 			curMap = copyMap(map);
@@ -99,23 +73,63 @@ public class ScrapWorld {
 				curRobot.update(curMap);
 				stepCount++;
 			}
-			System.out.println("Robot " + (i+1) + " scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
+			out.println("Robot " + (i+1) + " scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
 		}
 		curRobot = allRobots[allRobots.length-1];
 		curMap = copyMap(map);
 		stepCount = 0;
 		while( curRobot.getEnergy() > 0 && stepCount < MAX_STEPS){
 			if(displayOn){
+				System.out.println("Step: " + stepCount + ", score: " + curRobot.getScore());
 				print(curMap, curRobot);
+				Thread.sleep(SLEEP_TIME);
 			}
 			curRobot.update(curMap);
 			stepCount++;
 		}
-		System.out.println("Robot " + allRobots.length + " scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
+		out.println("Robot " + allRobots.length + " scored " + curRobot.getScore() + ", distance traversed: " + curRobot.getDistanceTraveled());
 		
-		
-		Arrays.sort(allRobots);
 		return allRobots;
+	}
+
+	private static Robot[] createNewGeneration(Robot[] oldGen){
+		Arrays.sort(oldGen);
+		Robot[] newGen = new Robot[oldGen.length];
+		int splicePoint;
+		int[] genes1, genes2, newGenes1, newGenes2;
+		for(int i = 0; i < oldGen.length/2; i++){
+			genes1 = oldGen[oldGen.length - 2*i - 1].getDNA().getGenes();
+			genes2 = oldGen[oldGen.length - 2*i - 2].getDNA().getGenes();
+
+			newGenes1 = new int[genes1.length];
+			newGenes2 = new int[genes2.length];
+			
+			splicePoint = (int)(Math.random()*newGenes1.length);
+			int j = 0;
+			for(; j < splicePoint; j++){
+				if(Math.random() < MUTATION_RATE)
+					newGenes1[j] = (int)(Math.random()*DNA.actions.values().length);
+				else
+					newGenes1[j] = genes1[j];
+				if(Math.random() < MUTATION_RATE)
+					newGenes2[j] = (int)(Math.random()*DNA.actions.values().length);
+				else
+					newGenes2[j] = genes2[j];
+			}
+			for(; j < newGenes1.length; j++){
+				if(Math.random() < MUTATION_RATE)
+					newGenes1[j] = (int)(Math.random()*DNA.actions.values().length);
+				else
+					newGenes1[j] = genes2[j];
+				if(Math.random() < MUTATION_RATE)
+					newGenes2[j] = (int)(Math.random()*DNA.actions.values().length);
+				else
+					newGenes2[j] = genes1[j];
+			}
+			newGen[2*i] = new Robot(1,1, new DNA(newGenes1));
+			newGen[2*i+1] = new Robot(1,1, new DNA(newGenes2));
+		}
+		return newGen;
 	}
 	
 	public static OBJECTS[][] copyMap(OBJECTS[][] map){
@@ -181,5 +195,15 @@ public class ScrapWorld {
 		in.close();
 		
 		return map;		
+	}
+
+	public static void saveRobot(Robot robo) throws IOException {
+		PrintWriter saver = new PrintWriter(new FileWriter("high-scores.txt", true));
+		saver.println("SCORE:" + robo.getScore());
+		saver.println("Distance:" + robo.getDistanceTraveled());
+		saver.println("Generation: " + GENERATIONS);
+		saver.println("Gene: " + robo.getDNA().toString());
+		saver.println("=================================");
+		saver.close();
 	}
 }
