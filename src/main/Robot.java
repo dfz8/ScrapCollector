@@ -42,9 +42,9 @@ public class Robot implements Comparable<Robot> {
 		}
 		
 		//find the index of the current action
-		int index = 125*map[this.pos_y+1][this.pos_x].value() +
-				 	 25*map[this.pos_y][this.pos_x+1].value() +
-					  5*map[this.pos_y-1][this.pos_x].value() +
+		int index =  64*map[this.pos_y+1][this.pos_x].value() +
+				 	 16*map[this.pos_y][this.pos_x+1].value() +
+					  4*map[this.pos_y-1][this.pos_x].value() +
 					    map[this.pos_y][this.pos_x-1].value();		
 			
 		switch(dna.getAction(index)){ 

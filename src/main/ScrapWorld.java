@@ -24,10 +24,11 @@ public class ScrapWorld {
 	
 	public static int width;
 	public static int height;
+	public static final String MAP = "map2.txt";
 	public static final int MAX_STEPS = 125;
-	public static final int GENERATIONS = 100;
+	public static final int GENERATIONS = 1000;
 	public static final int SLEEP_TIME = 200;
-	public static final double MUTATION_RATE = 0.01;
+	public static final double MUTATION_RATE = 0.1;
 	public static final int ROBOTS_PER_GENERATION = 40; //must be even
 	public static boolean displayOn = false;
 	public static PrintWriter out;
@@ -93,41 +94,85 @@ public class ScrapWorld {
 	}
 
 	private static Robot[] createNewGeneration(Robot[] oldGen){
-		Arrays.sort(oldGen);
+		return probabilisticSelection(oldGen);
+		//return eliteSelection(oldGen);
+	}
+	
+	private static Robot[] probabilisticSelection(Robot[] oldGen){
+		
 		Robot[] newGen = new Robot[oldGen.length];
-		int splicePoint;
-		int[] genes1, genes2, newGenes1, newGenes2;
-		for(int i = 0; i < oldGen.length/2; i++){
-			genes1 = oldGen[oldGen.length - 2*i - 1].getDNA().getGenes();
-			genes2 = oldGen[oldGen.length - 2*i - 2].getDNA().getGenes();
-
-			newGenes1 = new int[genes1.length];
-			newGenes2 = new int[genes2.length];
+		//normalize scores
+		int sum = 0;
+		for(int i = 0; i < oldGen.length; i++){
+			sum += oldGen[i].getScore();
+		}
+		int[] probs = new int[ROBOTS_PER_GENERATION];
+		for(int i = 0, ind = 0; i < oldGen.length; i++){
+			int normScore = (int)(ROBOTS_PER_GENERATION*1.0*oldGen[i].getScore()/sum + .5);
+			for( int end = ind+normScore; ind < end && ind < probs.length; ind++){
+				probs[ind] = i;
+			}
+		}
+		
+		//generate next generation
+		int parent1, parent2;
+		for(int i = 0; i < newGen.length/2; i++){
+			parent1 = probs[(int)(Math.random()*oldGen.length)];
+			parent2 = probs[(int)(Math.random()*oldGen.length)];
+			//System.out.println("p1: " + parent1 + ",\tp2: " + parent2);
+			while(parent2 == parent1)
+				parent2 = probs[(int)(Math.random()*oldGen.length)];
 			
-			splicePoint = (int)(Math.random()*newGenes1.length);
-			int j = 0;
-			for(; j < splicePoint; j++){
-				if(Math.random() < MUTATION_RATE)
-					newGenes1[j] = (int)(Math.random()*DNA.actions.values().length);
-				else
-					newGenes1[j] = genes1[j];
-				if(Math.random() < MUTATION_RATE)
-					newGenes2[j] = (int)(Math.random()*DNA.actions.values().length);
-				else
-					newGenes2[j] = genes2[j];
-			}
-			for(; j < newGenes1.length; j++){
-				if(Math.random() < MUTATION_RATE)
-					newGenes1[j] = (int)(Math.random()*DNA.actions.values().length);
-				else
-					newGenes1[j] = genes2[j];
-				if(Math.random() < MUTATION_RATE)
-					newGenes2[j] = (int)(Math.random()*DNA.actions.values().length);
-				else
-					newGenes2[j] = genes1[j];
-			}
-			newGen[2*i] = new Robot(1,1, new DNA(newGenes1));
-			newGen[2*i+1] = new Robot(1,1, new DNA(newGenes2));
+			spliceGenes(oldGen, newGen, parent1, parent2, i);
+			
+		}
+		return newGen;
+	}
+
+	private static void spliceGenes(Robot[] oldGen, Robot[] newGen, int parent1, int parent2, int i) {
+		int[] gene1;
+		int[] gene2;
+		int[] newGenes1;
+		int[] newGenes2;
+		gene1 = oldGen[parent1].getDNA().getGenes();
+		gene2 = oldGen[parent2].getDNA().getGenes();
+		newGenes1 = new int[gene1.length];
+		newGenes2 = new int[gene2.length];
+		
+		int splicePoint = (int)(Math.random()*gene1.length);
+		int j = 0;
+		for(; j < splicePoint; j++){
+			if(Math.random() < MUTATION_RATE)
+				newGenes1[j] = (int)(Math.random()*DNA.actions.values().length);
+			else
+				newGenes1[j] = gene1[j];
+			if(Math.random() < MUTATION_RATE)
+				newGenes2[j] = (int)(Math.random()*DNA.actions.values().length);
+			else
+				newGenes2[j] = gene2[j];
+		}
+		for(; j < newGenes1.length; j++){
+			if(Math.random() < MUTATION_RATE)
+				newGenes1[j] = (int)(Math.random()*DNA.actions.values().length);
+			else
+				newGenes1[j] = gene2[j];
+			if(Math.random() < MUTATION_RATE)
+				newGenes2[j] = (int)(Math.random()*DNA.actions.values().length);
+			else
+				newGenes2[j] = gene1[j];
+		}
+		newGen[2*i] = new Robot(1,1, new DNA(newGenes1));
+		newGen[2*i+1] = new Robot(1,1, new DNA(newGenes2));
+	}
+
+	private static Robot[] eliteSelection(Robot[] oldGen){
+		Arrays.sort(oldGen);
+		int parent1, parent2;
+		Robot[] newGen = new Robot[oldGen.length];
+		for(int i = 0; i < oldGen.length/2; i++){
+			parent1 = oldGen.length - 2*i - 1;
+			parent2 = oldGen.length - 2*i - 2;
+			spliceGenes(oldGen, newGen, parent1, parent2, i);
 		}
 		return newGen;
 	}
@@ -164,7 +209,7 @@ public class ScrapWorld {
 	}
 	
 	public static OBJECTS[][] readFile() throws IOException {
-		BufferedReader in = new BufferedReader(new FileReader(new File("resources/map.txt")));
+		BufferedReader in = new BufferedReader(new FileReader(new File("resources/"+MAP)));
 		String[] dim = in.readLine().split(" ");
 
 		height = Integer.parseInt(dim[0]);	
@@ -199,8 +244,9 @@ public class ScrapWorld {
 
 	public static void saveRobot(Robot robo) throws IOException {
 		PrintWriter saver = new PrintWriter(new FileWriter("high-scores.txt", true));
-		saver.println("SCORE:" + robo.getScore());
-		saver.println("Distance:" + robo.getDistanceTraveled());
+		saver.println("MAP: " + MAP);
+		saver.println("SCORE: " + robo.getScore());
+		saver.println("Distance: " + robo.getDistanceTraveled());
 		saver.println("Generation: " + GENERATIONS);
 		saver.println("Gene: " + robo.getDNA().toString());
 		saver.println("=================================");

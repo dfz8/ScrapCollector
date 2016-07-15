@@ -8,7 +8,7 @@ public class DNA {
 	};
 	
 	private int[] genes;
-	public static final int LENGTH = 625;
+	public static final int LENGTH = 256;
 	
 	public DNA(){
 		this.genes = new int[LENGTH];
