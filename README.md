@@ -12,10 +12,8 @@ As the robot is moving around on the map, it automatically picks up any items in
 then the robot gets an energy boost and can continue for a bit longer.
 
 ### Robot Fitness
-Points are scored upon picking up scrap or oil. The emphasis is on scrap collection, so the score for pick up each are:
-
-Scrap: +1000
-
+Points are scored upon picking up scrap or oil. The emphasis is on scrap collection, so the score for pick up each are:  
+Scrap: +1000  
 Oil:   + 100
 
 If the scores of two robots happen to be the same, the fitter one is the one that has traveled the furthest from its starting point.
